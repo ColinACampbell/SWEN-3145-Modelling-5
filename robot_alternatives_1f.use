@@ -1,0 +1,273 @@
+/* ---------------------------------------------------------------------*/
+model AnalysingRobotSignupAndStaticJourney
+/* --------------------------------------------------------------------*/
+
+/* ----------------------------------------------------------------------
+    Classes used as DataTypes
+---------------------------------------------------------------------- */
+class Date
+attributes
+    day: Integer init: 1
+    month: Integer init: 1
+    year: Integer init: 1901
+
+operations
+    /** Updates the attribute values */
+    initialise(d: Integer, m: Integer, y: Integer)
+    begin
+        self.day := d;
+        self.month := m;
+        self.year := y;
+    end
+    pre parametersHaveValidValues: isValid(d, m, y)
+    post attributesCorrectlyUpdatedAlt:
+        (if d = day@pre then day = day@pre else day = d endif) and
+            (if m = month@pre then month = month@pre else month = m endif) and
+                (if y = year@pre then year = year@pre else year = y endif)
+
+    /* Accessors */
+    getDay(): Integer = day
+    getMonth(): Integer = month
+    getYear(): Integer = year
+
+    /* Mutators - ***** Fill in your OCL expressions and pre- and
+                post-conditions for these  from the previous Modelling
+                session that asked you to write them. */
+    setDay(d: Integer)
+    setMonth(m: Integer)
+    setYear(y: Integer)
+
+    /** returns true if all the attributes are not null, false otherwise */
+    isInitialised(): Boolean =
+        day <> null and month <> null and year <> null
+
+    /** returns true if self is before d, , false otherwise */
+    before(d: Date): Boolean = true /* ***** Fill in your OCL expression
+                from  the previous Modelling session that asked you
+                to write it. */
+
+    /** returns true if self has the same values as d, false otherwise */
+    equals(d: Date): Boolean = day = d.day and month = d.month and year = d.year
+    pre bothAreInitialised: isInitialised() and d.isInitialised()
+    pre bothAreValid: isValid(day, month, year) and
+        isValid(d.day, d.month, d.year)
+    post returnValueConditions:
+        let
+            s = Set{day = d.day, month = d.month, year = d.month}
+        in
+            result =  s->excludes(false) /* true or flase will be in result */
+
+    /** returns true if self is after d, false otherwise */
+    after(d: Date): Boolean = not equals(d) and not before(d)
+
+    /** returns true if y is a leap year, false otherwise */
+    isLeapYear(y: Integer): Boolean =
+        if (y.mod(400)=0 or (y.mod(100)>0 and y.mod(4)=0))
+        then true
+        else false
+        endif
+    pre yearIsValid: y > 1900
+
+    dayValid(v: Integer): Boolean = v >= 1 and v <= 31
+
+    monthValid(v: Integer): Boolean =  v >= 1 and v <= 12
+
+    yearValid(v: Integer): Boolean = v > 1900
+
+    dayAndMonthValid(d: Integer, m: Integer): Boolean =
+        Set{4, 6, 9, 11}->includes(m) implies d < 31
+
+    febValid(d: Integer, y: Integer): Boolean =
+        (isLeapYear(y) implies d <= 29) and
+            (not isLeapYear(y) implies d <= 28)
+
+    isValid(d: Integer, m: Integer, y: Integer): Boolean =
+         dayValid(d) and monthValid(m) and yearValid(y) and
+            dayAndMonthValid(d, m) and (m = 2 implies febValid(d, y))
+
+constraints
+    inv dayValues: dayValid(day)
+    inv monthValues: monthValid(month)
+    inv yearValues: yearValid(year)
+    inv monthsWith30Days: dayAndMonthValid(day, month)
+    inv inLeapYearFebDaysCorrect: month = 2 implies febValid(day, year)
+end
+
+class DateTime < Date
+attributes
+    hour: Integer
+    minute: Integer
+    second: Integer
+end
+
+/* ----------------------------------------------------------------------
+    -- ENUMERATIONS
+---------------------------------------------------------------------- */
+enum VerifiedStatus{
+    Denied /* Approval is denied */,
+    Initialised /* Entry has been made but the approval
+        process has not started */,
+    OnHold /* Approval is withheld temporarily */,
+    Processing /* Approval process has started, but not yet complete */,
+    Verified /* Approval is given */,
+    Withdrawn /* Approval is withdrawn */
+    }
+
+enum WorkingStatus{
+    OnTheRoad /* available to take a journey */,
+    OffRoad /* not available to take a journey */
+    }
+
+enum VehicleStatus{
+    Approved /* Approved by an administrator */,
+    Denied /* Approval is denied (by an administrator) */,
+    Initialised /* Entry has been made but the approval
+        process has not started */,
+    Retired /* Withdrawn by an owner */,
+    Suspended /* Temporarily withdrawn by an administrator or owner */
+    }
+
+enum JourneyStatus {
+    Abandoned /* Journey has started but is abandoned, unfinished */,
+    Cancelled /* Journey did not start and is cancelled */,
+    Finished /* Journey is completed */,
+    Initialised /* Entry has been made but the journey has not started */,
+    Started /* Journey has started */
+    }
+
+/* ----------------------------------------------------------------------
+    CLASSES in the model, where there are too many, they will be
+    organised alphabetically(ish)
+---------------------------------------------------------------------- */
+/* abstract CLASSES */
+abstract class Role end
+
+/* extended concrete CLASSES */
+class Administrator < Role end
+class Customer < Role end
+class Driver < Role end
+class Owner < Role end
+
+/* un-extended concrete CLASSES */
+class Journey
+attributes
+    journeyDate: DateTime
+    nbrOfPersons: Integer
+    status: JourneyStatus
+end
+
+class Person
+attributes
+    dateOfBirth: Date
+    age: Integer derived = 0 /**** TBD */
+end
+
+class Vehicle
+attributes
+    capacity: Integer
+    status: VehicleStatus
+    workingStatus: WorkingStatus
+end
+
+class RobotEnterprise end
+
+/* ----------------------------------------------------------------------
+    ASSOCIATION CLASSES in the model, organised alphabetically
+---------------------------------------------------------------------- */
+associationclass VehicleDriver
+between
+    Driver[1..*] role assignedDrivers
+    Vehicle[*] role drives
+attributes
+    verifiedStatus: VerifiedStatus
+    workingStatus: WorkingStatus
+end
+
+/* ----------------------------------------------------------------------
+    AGGREGATION in the model, organised alphabetically
+---------------------------------------------------------------------- */
+
+/* ----------------------------------------------------------------------
+    COMPOSITION in the model, organised alphabetically
+---------------------------------------------------------------------- */
+
+/* ----------------------------------------------------------------------
+    ASSOCIATIONs in the model, organised alphabetically
+---------------------------------------------------------------------- */
+association AdministratorRole
+between
+    Person[*] role admin
+    Administrator[0..1] role administratorRole
+end
+
+
+association CustomerRole
+between
+    Person[*] role customer
+    Customer[0..1] role customerRole
+end
+
+association DriverRole
+between
+    Person[*] role driver
+    Driver[0..1] role driverRole
+end
+
+association CustomerJourney
+between
+    Person[1..*] role customer
+    Journey[*] role cjourneys ordered
+end
+
+association JourneyDriver
+between
+    Journey[*] role djourneys ordered
+    Person[1] role driver
+end
+
+association JourneyVehicle
+between
+    Journey[*] role vjourneys ordered
+    Vehicle[1] role robot
+end
+
+association OwnerRole
+between
+    Person[*] role owner
+    Owner[0..1] role ownerRole
+end
+
+association OwnerVerification
+between
+    VehicleDriver[*]
+    Owner[*]
+end
+
+association PersonRole
+between
+    Person[*] role user
+    Role[1..*] role uRol
+end
+
+association VehicleOwner
+between
+    Owner[1..*] role owners
+    Vehicle[*] role owns
+end
+
+association AllJourneys
+between
+    RobotEnterprise[1]
+    Journey[*] role journeys ordered
+end
+
+association AllUsers
+between
+    RobotEnterprise[1]
+    Person[*] role users
+end
+
+/* ----------------------------------------------------------------------
+    CONSTRAINTS
+---------------------------------------------------------------------- */
+constraints
