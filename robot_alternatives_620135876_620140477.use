@@ -182,7 +182,16 @@ attributes
     verifiedStatus: VerifiedStatus
     workingStatus: WorkingStatus
 end
------------------------------------------------------------------*/
+
+/* ----------------------------------------------------------------------
+    AGGREGATION in the model, organised alphabetically
+---------------------------------------------------------------------- */
+
+/* ----------------------------------------------------------------------
+    COMPOSITION in the model, organised alphabetically
+---------------------------------------------------------------------- */
+
+/* ----------------------------------------------------------------------
     ASSOCIATIONs in the model, organised alphabetically
 ---------------------------------------------------------------------- */
 association AdministratorRole
@@ -287,12 +296,10 @@ context Journey
         let d= robot.assignedDrivers in d.driver -> includes(self.driver) and d-> select
         (k| k = self.driver.driverRole).vehicleDriver->select(k|k.WorkingStatus = #OnTheRoad).drives->includes(robot)
 
-        let d= robot.members in d.persons -> includes(self.persons) and d-> select
-        (k| k = self.members.driverRole).vehicleDriver->select(k|k.WorkingStatus = #OnTheRoad).drives->includes(robot)
-
     /**The vehicle’s status has to be approved before a journey can begin*/
     inv vechstatusapproved : 
-        
+        let b= robot.assignedDrivers in b.driver -> includes(self.driver) and b-> select
+        (k| k = self.driver.driverRole).vehicleDriver->select(k|k.VehicleStatus = #Approved).drives->includes(robot)
 
     /**A driver on a journey must have a verified status of verified */
     inv musthaveverifieddriver: 
@@ -303,3 +310,4 @@ context Journey
     inv mustbefinished: 
         let x= robot.assignedDrivers in x.driver -> includes(self.driver) and x-> select
         (k| k = self.driver.driverRole).vehicleDriver->select(k|k.journeyStatus = #Finished).drives->includes(robot)
+    
